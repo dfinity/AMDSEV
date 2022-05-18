@@ -101,7 +101,7 @@ build_install_ovmf()
 		GCCVERS="GCC5"
 	fi
 
-	BUILD_CMD="nice build -q --cmd-len=64436 -DDEBUG_ON_SERIAL_PORT=TRUE -n $(getconf _NPROCESSORS_ONLN) ${GCCVERS:+-t $GCCVERS} -a X64 -p OvmfPkg/OvmfPkgX64.dsc"
+	BUILD_CMD="nice build -q --cmd-len=64436 -DDEBUG_ON_SERIAL_PORT=TRUE -n $(getconf _NPROCESSORS_ONLN) ${GCCVERS:+-t $GCCVERS} -a X64 -p OvmfPkg/AmdSev/AmdSevX64.dsc"
 
 	[ -d ovmf ] || {
 		run_cmd git clone --single-branch -b ${OVMF_BRANCH} ${OVMF_GIT_URL} ovmf
@@ -117,8 +117,15 @@ build_install_ovmf()
 		run_cmd $BUILD_CMD
 
 		mkdir -p $DEST
-		run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_CODE.fd $DEST
-		run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_VARS.fd $DEST
+		if [ -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_CODE.fd ]; then
+      run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_CODE.fd $DEST
+    fi
+    if [ -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_VARS.fd ]; then
+      run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_VARS.fd $DEST
+    fi
+    if [ -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF.fd ]; then
+      run_cmd cp -f Build/OvmfX64/DEBUG_$GCCVERS/FV/OVMF_CODE.fd $DEST
+    fi
 	popd >/dev/null
 }
 
