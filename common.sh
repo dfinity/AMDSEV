@@ -108,6 +108,7 @@ build_install_ovmf()
 
 		pushd ovmf >/dev/null
 			run_cmd git submodule update --init --recursive
+			touch OvmfPkg/AmdSev/Grub/grub.efi
 		popd >/dev/null
 	}
 
