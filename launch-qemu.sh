@@ -128,7 +128,7 @@ while [ -n "$1" ]; do
 		-cdrom)		CDROM_FILE="$2"
 				shift
 				;;
-		-config)        CONFIG_FILE="$2"
+		-config)        CONFIG="$2"
 				shift
 				;;
 		-default-network)
@@ -168,6 +168,15 @@ QEMU_EXE="$(readlink -e $TMP)"
 	}
 
 	[ -z "$GUEST_NAME" ] && GUEST_NAME="$(basename $TMP | sed -re 's|\.[^\.]+$||')"
+}
+
+[ -n "$CONFIG" ] && {
+        TMP="$CONFIG"
+        CONFIG="$(readlink -e $TMP)"
+        [ -z "$CONFIG" ] && {
+                echo "Can't locate Config file [$TMP]"
+                usage
+        }
 }
 
 TMP="$UEFI_PATH/OVMF_CODE.fd"
