@@ -22,7 +22,7 @@ build_kernel()
 		if [ "$KERNEL_CHECKOUT_TARBALL" = true ] ; then
 			# Download and extract the tarball from github into guest/
 			run_cmd wget -q -O guest.tar.gz ${KERNEL_GIT_URL%".git"}/archive/${KERNEL_GUEST_BRANCH}.tar.gz
-			run_cmd tar -xzf guest.tar.gz -C guest
+			run_cmd tar -xzf guest.tar.gz --one-top-level=guest
 		else
 			run_cmd git clone ${KERNEL_GIT_URL} guest
 			pushd guest >/dev/null
@@ -35,7 +35,7 @@ build_kernel()
 		if [ "$KERNEL_CHECKOUT_TARBALL" = true ] ; then
 			# Download and extract the tarball from github into host/
 			run_cmd wget -q -O host.tar.gz ${KERNEL_GIT_URL%".git"}/archive/${KERNEL_HOST_BRANCH}.tar.gz
-			run_cmd tar -xzf host.tar.gz -C host
+			run_cmd tar -xzf host.tar.gz --one-top-level=host
 		else
 			# use a copy of guest repo as the host repo
 			run_cmd cp -r guest host
