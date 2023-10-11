@@ -40,6 +40,7 @@ usage() {
 	echo " -initrd PATH       initrd to use"
 	echo " -append ARGS       kernel command line arguments to use"
 	echo " -cdrom PATH        CDROM image"
+	echo " -config PATH	  Config image"
 	echo " -default-network   enable default usermode networking"
 	echo "                    (Requires that QEMU is built on a host that supports libslirp-dev 4.7 or newer)"
 	exit 1
@@ -133,6 +134,9 @@ while [ -n "$1" ]; do
 		-cdrom)		CDROM_FILE="$2"
 				shift
 				;;
+		-config)        CONFIG="$2"
+				shift
+				;;
 		-default-network)
 				USE_DEFAULT_NETWORK="1"
 				;;
@@ -170,6 +174,15 @@ QEMU_EXE="$(readlink -e $TMP)"
 	}
 
 	[ -z "$GUEST_NAME" ] && GUEST_NAME="$(basename $TMP | sed -re 's|\.[^\.]+$||')"
+}
+
+[ -n "$CONFIG" ] && {
+        TMP="$CONFIG"
+        CONFIG="$(readlink -e $TMP)"
+        [ -z "$CONFIG" ] && {
+                echo "Can't locate Config file [$TMP]"
+                usage
+        }
 }
 
 TMP="$UEFI_PATH/OVMF_CODE.fd"
@@ -225,7 +238,7 @@ add_opts "-no-reboot"
 # The OVMF binary, including the non-volatile variable store, appears as a
 # "normal" qemu drive on the host side, and it is exposed to the guest as a
 # persistent flash device.
-add_opts "-drive if=pflash,format=raw,unit=0,file=${UEFI_CODE},readonly"
+add_opts "-drive if=pflash,format=raw,unit=0,file=${UEFI_CODE},readonly=on"
 add_opts "-drive if=pflash,format=raw,unit=1,file=${UEFI_VARS}"
 
 # add CDROM if specified
@@ -235,10 +248,10 @@ add_opts "-drive if=pflash,format=raw,unit=1,file=${UEFI_VARS}"
 # distros like Ubuntu 20.04 still only provide 4.1, so only enable
 # usermode network if specifically requested.
 if [ "$USE_DEFAULT_NETWORK" = "1" ]; then
-    #echo "guest port 22 is fwd to host 8000..."
-    #add_opts "-netdev user,id=vmnic,hostfwd=tcp::8000-:22 -device e1000,netdev=vmnic,romfile="
-    add_opts "-netdev user,id=vmnic"
-    add_opts " -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile="
+    echo "guest port 22 is fwd to host 8000..."
+    add_opts "-netdev user,id=vmnic,hostfwd=tcp::8000-:22 -device e1000,netdev=vmnic,romfile="
+    #add_opts "-netdev user,id=vmnic"
+    #add_opts " -device virtio-net-pci,disable-legacy=on,iommu_platform=true,netdev=vmnic,romfile="
 fi
 
 # If harddisk file is specified then add the HDD drive
@@ -258,6 +271,10 @@ if [ -n "${HDA}" ]; then
 			add_opts "-drive file=${HDA},format=raw"
 		fi
 	fi
+fi
+
+if [ -n "${CONFIG}" ]; then
+	add_opts "-drive file=${CONFIG},format=raw"
 fi
 
 # If this is SEV guest then add the encryption device objects to enable support
