@@ -71,7 +71,15 @@ build_kernel()
 			run_cmd git checkout current/${BRANCH}
 			COMMIT=$(git log --format="%h" -1 HEAD)
 
-			run_cmd "cp /boot/config-$(uname -r) .config"
+			# If the old kernel config file is present, use it. 
+			# Otherwise, make the default config instead (e.g. for container builds)
+			OLD_CONFIG_FILE="/boot/config-$(uname -r)"
+			if [ -f "${OLD_CONFIG_FILE}" ]; then
+				run_cmd cp "${OLD_CONFIG_FILE}" .config
+			else
+				run_cmd $MAKE defconfig
+			fi
+
 			run_cmd ./scripts/config --set-str LOCALVERSION "$VER-$COMMIT"
 			run_cmd ./scripts/config --disable LOCALVERSION_AUTO
 			run_cmd ./scripts/config --enable  EXPERT
