@@ -19,15 +19,27 @@ build_kernel()
 	pushd linux >/dev/null
 
 	if [ ! -d guest ]; then
-		run_cmd git clone ${KERNEL_GIT_URL} guest
-		pushd guest >/dev/null
-		run_cmd git remote add current ${KERNEL_GIT_URL}
-		popd
+		if [ "$KERNEL_CHECKOUT_TARBALL" = true ] ; then
+			# Download and extract the tarball from github into guest/
+			run_cmd wget -q -O guest.tar.gz ${KERNEL_GIT_URL%".git"}/archive/${KERNEL_GUEST_BRANCH}.tar.gz
+			run_cmd tar -xzf guest.tar.gz -C guest
+		else
+			run_cmd git clone ${KERNEL_GIT_URL} guest
+			pushd guest >/dev/null
+			run_cmd git remote add current ${KERNEL_GIT_URL}
+			popd
+		fi
 	fi
 
 	if [ ! -d host ]; then
-		# use a copy of guest repo as the host repo
-		run_cmd cp -r guest host
+		if [ "$KERNEL_CHECKOUT_TARBALL" = true ] ; then
+			# Download and extract the tarball from github into host/
+			run_cmd wget -q -O host.tar.gz ${KERNEL_GIT_URL%".git"}/archive/${KERNEL_HOST_BRANCH}.tar.gz
+			run_cmd tar -xzf host.tar.gz -C host
+		else
+			# use a copy of guest repo as the host repo
+			run_cmd cp -r guest host
+		fi
 	fi
 
 	for V in guest host; do
@@ -44,17 +56,22 @@ build_kernel()
 			BRANCH="${KERNEL_HOST_BRANCH}"
 		fi
 
-		# If ${KERNEL_GIT_URL} is ever changed, 'current' remote will be out
-		# of date, so always update the remote URL first. Also handle case
-		# where AMDSEV scripts are updated while old kernel repos are still in
-		# the directory without a 'current' remote
-		pushd ${V} >/dev/null
-		if git remote get-url current 2>/dev/null; then
-			run_cmd git remote set-url current ${KERNEL_GIT_URL}
+		# If KERNEL_CHECKOUT_TARBALL is set, ignore all git commands
+		if [ "$KERNEL_CHECKOUT_TARBALL" = true ] ; then
+			echo "Skipping git commands for ${V}"
 		else
-			run_cmd git remote add current ${KERNEL_GIT_URL}
+			# If ${KERNEL_GIT_URL} is ever changed, 'current' remote will be out
+			# of date, so always update the remote URL first. Also handle case
+			# where AMDSEV scripts are updated while old kernel repos are still in
+			# the directory without a 'current' remote
+			pushd ${V} >/dev/null
+			if git remote get-url current 2>/dev/null; then
+				run_cmd git remote set-url current ${KERNEL_GIT_URL}
+			else
+				run_cmd git remote add current ${KERNEL_GIT_URL}
+			fi
+			popd >/dev/null
 		fi
-		popd >/dev/null
 
 		# Nuke any previously built packages so they don't end up in new tarballs
 		# when ./build.sh --package is specified
@@ -67,9 +84,13 @@ build_kernel()
 		run_cmd $MAKE distclean
 
 		pushd ${V} >/dev/null
-			run_cmd git fetch current
-			run_cmd git checkout current/${BRANCH}
-			COMMIT=$(git log --format="%h" -1 HEAD)
+			if [ "$KERNEL_CHECKOUT_TARBALL" = true ] ; then
+				COMMIT="tarball"
+			else
+				run_cmd git fetch current
+				run_cmd git checkout current/${BRANCH}
+				COMMIT=$(git log --format="%h" -1 HEAD)
+			fi
 
 			# If the old kernel config file is present, use it. 
 			# Otherwise, make the default config instead (e.g. for container builds)
@@ -77,7 +98,9 @@ build_kernel()
 			if [ -f "${OLD_CONFIG_FILE}" ]; then
 				run_cmd cp "${OLD_CONFIG_FILE}" .config
 			else
+				popd >/dev/null
 				run_cmd $MAKE defconfig
+				pushd ${V} >/dev/null
 			fi
 
 			run_cmd ./scripts/config --set-str LOCALVERSION "$VER-$COMMIT"

@@ -7,6 +7,9 @@ KERNEL_GIT_URL="https://github.com/AMDESE/linux.git"
 KERNEL_HOST_BRANCH="snp-host-latest"
 KERNEL_GUEST_BRANCH="snp-host-latest"
 
+# ignore git history and use tarball of a branch instead
+KERNEL_CHECKOUT_TARBALL=true
+
 # qemu commit
 QEMU_GIT_URL="https://github.com/AMDESE/qemu.git"
 QEMU_BRANCH="snp-latest"
